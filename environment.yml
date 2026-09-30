@@ -1,0 +1,16 @@
+# Conda environment for running Pixel Pomodoro from WSL (Linux) via WSLg.
+#   conda env create -f environment.yml && conda activate pixel-pomodoro
+name: pixel-pomodoro
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pillow
+  - pytest
+  - pyqtwebengine   # Qt WebEngine with its own libraries; no apt packages needed
+  - qtpy
+  - nodejs=22
+  - pip
+  - pip:
+      - pywebview
+      - -e ./backend

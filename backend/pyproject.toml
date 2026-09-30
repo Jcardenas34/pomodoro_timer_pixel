@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pixel-pomodoro"
+version = "0.1.0"
+description = "Full-screen 8-bit pomodoro timer with walking pixel sprites"
+requires-python = ">=3.10"
+dependencies = ["Pillow>=10", "pywebview>=5"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+pixel-pomodoro = "pomodoro.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["pomodoro*"]
