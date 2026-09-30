@@ -10,6 +10,7 @@ dependencies:
   - pyqtwebengine   # Qt WebEngine with its own libraries; no apt packages needed
   - qtpy
   - nodejs=22
+  - openjdk=21      # Android builds (Gradle / Android Gradle Plugin need JDK 17+)
   - pip
   - pip:
       - pywebview

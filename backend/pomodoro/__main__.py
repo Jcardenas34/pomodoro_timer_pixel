@@ -9,6 +9,8 @@ from pathlib import Path
 
 from .api import Api
 from .assets import ensure_builtin, export_demo
+from .android_art import export_android_art
+from .audio import export_chimes
 from .storage import Storage
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -32,7 +34,15 @@ def main() -> None:
                         help="write built-in art to DIR for browser-only frontend dev, then exit")
     parser.add_argument("--gui", default="qt" if sys.platform.startswith("linux") else None,
                         help="pywebview GUI backend (default: qt on Linux, native elsewhere)")
+    parser.add_argument("--export-android", type=Path, metavar="RES_DIR",
+                        help="write chimes, launcher icons and splash into an Android res/ dir, then exit")
     args = parser.parse_args()
+
+    if args.export_android:
+        export_chimes(args.export_android / "raw")
+        export_android_art(args.export_android)
+        print(f"wrote Android chimes, icons and splash to {args.export_android}")
+        return
 
     if args.export_demo:
         export_demo(args.export_demo)

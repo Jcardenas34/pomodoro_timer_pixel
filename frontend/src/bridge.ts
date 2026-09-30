@@ -1,8 +1,10 @@
 /**
- * Typed access to the Python API (window.pywebview.api). When the page runs in
- * a plain browser (npm run dev from WSL, screenshots), a mock backed by
- * localStorage and public/demo assets stands in.
+ * Typed access to the Python API (window.pywebview.api). On Android, and in a
+ * plain browser (npm run dev from WSL, screenshots), LocalBackend (local.ts)
+ * stands in, storing data on the device and loading bundled public/demo art.
  */
+
+import { isNative, LocalBackend } from "./local";
 
 export interface Settings {
   frameColor: string;
@@ -70,71 +72,12 @@ declare global {
   }
 }
 
-const DEFAULT_SETTINGS: Settings = {
-  frameColor: "#000000",
-  frameWidth: 6,
-  workMinutes: 25,
-  shortMinutes: 5,
-  longMinutes: 15,
-  longEvery: 4,
-  autoStartBreaks: true,
-  autoStartWork: false,
-  sound: true,
-  background: "builtin:fuji",
-};
-
-function readLocal<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? { ...fallback, ...JSON.parse(raw) } : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeLocal(key: string, value: unknown): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    /* storage unavailable: settings just won't persist */
-  }
-}
-
-class MockBackend implements Backend {
-  private nextId = 1;
-
-  async get_state(): Promise<AppState> {
-    const res = await fetch("demo/manifest.json");
-    const assets: Asset[] = res.ok ? await res.json() : [];
-    return { settings: readLocal("settings", DEFAULT_SETTINGS), assets };
-  }
-  async save_settings(values: Partial<Settings>): Promise<Settings> {
-    const merged = { ...readLocal("settings", DEFAULT_SETTINGS), ...values };
-    writeLocal("settings", merged);
-    return merged;
-  }
-  async start_session(task: string | null, phase: string): Promise<number> {
-    console.info("[mock] start_session", task, phase);
-    return this.nextId++;
-  }
-  async end_session(id: number, seconds: number, completed: boolean): Promise<void> {
-    console.info("[mock] end_session", id, seconds, completed);
-  }
-  async get_stats(): Promise<StatRow[]> {
-    return [];
-  }
-  async toggle_fullscreen(): Promise<void> {
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else await document.documentElement.requestFullscreen();
-  }
-  async quit(): Promise<void> {}
-}
-
-/** Resolve the Python API once pywebview has injected it, or fall back to the mock. */
+/** Resolve the Python API once pywebview has injected it, or fall back to the in-page backend. */
 export function connect(timeoutMs = 1500): Promise<Backend> {
   return new Promise((resolve) => {
+    if (isNative()) return resolve(new LocalBackend()); // Android: no Python host
     if (window.pywebview?.api) return resolve(window.pywebview.api);
-    const timer = setTimeout(() => resolve(new MockBackend()), timeoutMs);
+    const timer = setTimeout(() => resolve(new LocalBackend()), timeoutMs);
     window.addEventListener("pywebviewready", () => {
       clearTimeout(timer);
       resolve(window.pywebview!.api);

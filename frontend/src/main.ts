@@ -2,8 +2,10 @@ import "@fontsource/oswald/700.css";
 import "@fontsource/press-start-2p/400.css";
 import "./styles.css";
 
+import { AndroidShell } from "./android";
 import { connect, type Asset, type BackgroundMeta, type Settings, type SpriteMeta } from "./bridge";
 import { FlipClock } from "./flipclock";
+import { isNative } from "./local";
 import { Scene } from "./scene";
 import { chime } from "./sound";
 import { PomodoroTimer, type Phase } from "./timer";
@@ -41,6 +43,8 @@ async function boot(): Promise<void> {
     ["settings", "Settings", "S", () => settingsPanel.openWith(settings)],
     ["full", "Full screen", "F", () => void api.toggle_fullscreen()],
   ];
+  // Android is always immersive full screen, so there is nothing to toggle.
+  if (isNative()) buttons.pop();
   const buttonEls: Record<string, HTMLButtonElement> = {};
   for (const [id, title, key, action] of buttons) {
     const b = document.createElement("button");
@@ -77,12 +81,27 @@ async function boot(): Promise<void> {
     autoStartBreaks: settings.autoStartBreaks,
     autoStartWork: settings.autoStartWork,
   });
-  const timer = new PomodoroTimer(timerConfig());
+  // performance.now() stops while an Android phone sleeps; wall-clock time keeps the deadline honest.
+  const timer = new PomodoroTimer(timerConfig(), isNative() ? () => Date.now() : undefined);
+  const android = await AndroidShell.setup({
+    timer,
+    soundOn: () => settings.sound,
+    closePanel: () => {
+      const wasOpen = taskPanel.isOpen || settingsPanel.isOpen;
+      taskPanel.close();
+      settingsPanel.close();
+      return wasOpen;
+    },
+  });
+  // Skip the in-app chime if the phase-end notification already played it while the app was hidden.
+  const playChime = (kind: "work" | "break") => {
+    if (settings.sound && !android?.chimeAlreadyPlayed()) chime(kind);
+  };
 
   // Only work phases are logged; that is the time spent on a task.
   timer.on(async (e) => {
     if (e.phase !== "work") {
-      if (e.type === "complete" && settings.sound) chime("work");
+      if (e.type === "complete") playChime("work");
       return;
     }
     if (e.type === "start") {
@@ -92,7 +111,7 @@ async function boot(): Promise<void> {
       sessionId = null;
       await api.end_session(id, Math.round(e.elapsedMs / 1000), e.type === "complete");
     }
-    if (e.type === "complete" && settings.sound) chime("break");
+    if (e.type === "complete") playChime("break");
   });
 
   function renderLabel(): void {
@@ -126,6 +145,7 @@ async function boot(): Promise<void> {
     hideTimer = window.setTimeout(() => frame.classList.add("idle"), CONTROLS_HIDE_MS);
   }
   window.addEventListener("mousemove", showControls);
+  window.addEventListener("pointerdown", showControls); // touch screens never send mousemove
   showControls();
 
   window.addEventListener("keydown", (e) => {
@@ -160,6 +180,7 @@ async function boot(): Promise<void> {
     renderLabel();
     scene.update(dt);
     scene.draw();
+    android?.sync();
     requestAnimationFrame(frameLoop);
   }
   requestAnimationFrame(frameLoop);

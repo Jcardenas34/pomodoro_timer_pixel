@@ -42,6 +42,45 @@ Options:
 
 Data (settings, session history, generated art) lives in `%APPDATA%\PixelPomodoro`.
 
+## Run it on Android (sideloaded APK)
+
+The same frontend runs in a Capacitor shell (`frontend/android/`). There is no Python on the phone.
+
+- **Art:** bundled as pre-rendered PNGs.
+- **Settings and session history:** stored on the device.
+- **Photo upload:** not included.
+
+**One-time setup (WSL, no sudo):**
+
+```bash
+conda env update -f environment.yml --prune   # adds JDK 21
+conda activate pixel-pomodoro
+bash scripts/setup-android-sdk.sh             # Android SDK -> ~/Android/Sdk, Windows adb.exe
+# then add the two exports it prints (ANDROID_HOME, WIN_ADB) to ~/.bashrc
+```
+
+**On the phone (once):**
+1. Open Settings → About phone and tap *Build number* 7 times.
+2. Open Settings → Developer options and turn on *USB debugging*.
+3. Plug the phone into the PC and accept the "Allow USB debugging" prompt.
+
+**Build and install:**
+
+```bash
+cd frontend
+npm run android:build     # exports art + chimes, builds web app, syncs, gradle assembleDebug
+npm run android:install   # adb install -r (via Windows adb.exe from WSL)
+```
+
+The APK is at `frontend/android/app/build/outputs/apk/debug/app-debug.apk`. Without USB, copy that file to the phone and tap it, then allow "install unknown apps" for your file manager. Rebuilding and reinstalling keeps your settings and history.
+
+**On the phone:**
+- The app is landscape and immersive full screen.
+- Tap anywhere to show the controls: Start/Pause, Reset, Skip phase, Set task, Settings.
+- Back closes a panel. When no panel is open, Back minimizes the app.
+- The screen stays on while the timer runs.
+- If you lock the phone or switch apps mid-phase, a notification plays the same 8-bit chime at the deadline. Allow notifications when asked on first launch. If the phone is on silent, the chime stays silent.
+
 ## Keys
 
 | Key | Action |
@@ -63,7 +102,7 @@ cd backend && python3 -m pomodoro --export-demo ../frontend/public/demo
 cd ../frontend && npm run dev        # http://localhost:5173
 ```
 
-Without pywebview, the frontend falls back to a mock backend (`src/bridge.ts`). It uses localStorage for settings and the exported demo art.
+Without pywebview, the frontend falls back to an in-page backend (`src/local.ts`). It stores settings and sessions in localStorage and uses the exported demo art. The Android build uses the same backend.
 
 ## Tests
 
@@ -80,6 +119,10 @@ cd frontend && npm test        # timer state machine
 - `frontend/src/flipclock.ts`: split-flap digits
 - `frontend/src/scene.ts`: canvas scene, wandering sprites, falling petals
 - `frontend/src/timer.ts`: deadline-based pomodoro state machine
+- `frontend/src/local.ts`: on-device backend (Android and browser), mirrors `storage.py`
+- `frontend/src/android.ts`: keep-awake, phase-end chime notification, back button
+- `frontend/android/`: Capacitor Android project (landscape, immersive `MainActivity`)
+- `backend/pomodoro/audio.py`, `android_art.py`: chime WAVs, launcher icons, splash (`--export-android`)
 - `docs/DECISIONS.md`: decision log
 
 ## Roadmap

@@ -20,7 +20,7 @@ class Panel {
     this.body = el("div", "panel-body");
     box.append(this.body);
     this.el.append(box);
-    this.el.addEventListener("mousedown", (e) => {
+    this.el.addEventListener("pointerdown", (e) => {
       if (e.target === this.el) this.close();
     });
   }
@@ -48,8 +48,11 @@ export class TaskPanel extends Panel {
     this.input.type = "text";
     this.input.maxLength = 60;
     this.input.placeholder = "e.g. Write chapter 3";
-    const hint = el("p", "hint", "Enter to save &middot; Esc to cancel");
-    form.append(this.input, hint);
+    this.input.enterKeyHint = "done";
+    const hint = el("p", "hint keys-hint", "Enter to save &middot; Esc to cancel");
+    const save = el("button", "ctl panel-action", "Save");
+    save.type = "submit";
+    form.append(this.input, hint, save);
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       onSubmit(this.input.value.trim());
@@ -122,7 +125,10 @@ export class SettingsPanel extends Panel {
       input.addEventListener("change", () => this.onChange({ [key]: input.checked }));
     }
 
-    this.body.append(grid, el("p", "hint", "Changes save automatically &middot; Esc to close"));
+    const done = el("button", "ctl panel-action", "Done");
+    done.type = "button";
+    done.addEventListener("click", () => this.close());
+    this.body.append(grid, el("p", "hint", "Changes save automatically<span class=\"keys-hint\"> &middot; Esc to close</span>"), done);
   }
 
   private field(grid: HTMLElement, key: keyof Settings, label: string, type: string): HTMLInputElement {
