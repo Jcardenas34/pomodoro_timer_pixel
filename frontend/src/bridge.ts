@@ -19,10 +19,16 @@ export interface Settings {
   background: string;
 }
 
+export type BackgroundEffect = "petals" | "jacaranda" | "leaves" | "snow" | "mist" | "fireflies";
+
 export interface BackgroundMeta {
   groundTop: number;
   groundBottom: number;
+  /** Legacy flag from before `effect`; same as effect: "petals". */
   petals?: boolean;
+  effect?: BackgroundEffect;
+  /** Scene pixel where the effect originates (mist: the top of the Jet d'Eau). */
+  effectOrigin?: [number, number];
 }
 
 export type Direction = "down" | "up" | "right";

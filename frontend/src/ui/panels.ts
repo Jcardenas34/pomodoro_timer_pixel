@@ -69,15 +69,50 @@ export class TaskPanel extends Panel {
   }
 }
 
+export interface BackgroundChoice {
+  id: string;
+  name: string;
+  src: string;
+}
+
 type NumberKey = "frameWidth" | "workMinutes" | "shortMinutes" | "longMinutes" | "longEvery";
 type BoolKey = "autoStartBreaks" | "autoStartWork" | "sound";
 
 export class SettingsPanel extends Panel {
   private inputs = new Map<keyof Settings, HTMLInputElement>();
 
-  /** onChange fires live on every edit so the border color previews instantly. */
-  constructor(private onChange: (values: Partial<Settings>) => void) {
+  private thumbs = new Map<string, HTMLButtonElement>();
+  private bgName: HTMLSpanElement;
+
+  /** onChange fires live on every edit so the border color and background preview instantly. */
+  constructor(
+    private onChange: (values: Partial<Settings>) => void,
+    private backgrounds: BackgroundChoice[] = [],
+  ) {
     super("Settings");
+
+    // Background picker: pixel thumbnails, tap to switch.
+    const bgHead = el("div", "bg-head", "Background: ");
+    this.bgName = el("span", "bg-name");
+    bgHead.append(this.bgName);
+    const bgGrid = el("div", "bg-grid");
+    for (const bg of backgrounds) {
+      const b = el("button", "bg-thumb");
+      b.type = "button";
+      b.title = bg.name;
+      const img = el("img");
+      img.src = bg.src;
+      img.alt = bg.name;
+      b.append(img);
+      b.addEventListener("click", () => {
+        this.selectBackground(bg.id);
+        this.onChange({ background: bg.id });
+      });
+      bgGrid.append(b);
+      this.thumbs.set(bg.id, b);
+    }
+    if (backgrounds.length > 1) this.body.append(bgHead, bgGrid);
+
     const grid = el("div", "settings-grid");
 
     const color = this.field(grid, "frameColor", "Border color", "color");
@@ -143,7 +178,13 @@ export class SettingsPanel extends Panel {
     return input;
   }
 
+  private selectBackground(id: string): void {
+    for (const [bgId, b] of this.thumbs) b.classList.toggle("selected", bgId === id);
+    this.bgName.textContent = this.backgrounds.find((bg) => bg.id === id)?.name ?? "";
+  }
+
   openWith(settings: Settings): void {
+    this.selectBackground(settings.background);
     for (const [key, input] of this.inputs) {
       const v = settings[key];
       if (input.type === "checkbox") input.checked = Boolean(v);

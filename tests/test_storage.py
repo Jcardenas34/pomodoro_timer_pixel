@@ -1,6 +1,6 @@
 import time
 
-from pomodoro.assets import ensure_builtin
+from pomodoro.assets import builtin_assets, ensure_builtin
 from pomodoro.storage import DEFAULT_SETTINGS, Storage
 
 
@@ -31,4 +31,5 @@ def test_builtin_assets_install_once(tmp_path):
     ensure_builtin(s)
     ensure_builtin(s)
     ids = sorted(a["id"] for a in s.list_assets())
-    assert ids == ["builtin:fuji", "builtin:mateo"]
+    assert ids == sorted(a[0] for a in builtin_assets())  # each built-in exactly once
+    assert {"builtin:fuji", "builtin:paris", "builtin:mateo"} <= set(ids)

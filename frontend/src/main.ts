@@ -63,11 +63,17 @@ async function boot(): Promise<void> {
     task = t;
     renderLabel();
   });
+  const backgrounds = state.assets.filter((a) => a.kind === "background") as Asset<BackgroundMeta>[];
+  const sprites = state.assets.filter((a) => a.kind === "sprite" && a.active) as Asset<SpriteMeta>[];
   const settingsPanel = new SettingsPanel((values) => {
     settings = { ...settings, ...values };
     applySettings();
+    if (values.background) {
+      const picked = backgrounds.find((b) => b.id === values.background);
+      if (picked) void scene.setBackground(picked);
+    }
     void api.save_settings(values);
-  });
+  }, backgrounds);
 
   frame.append(scene.canvas, center, controls, taskPanel.el, settingsPanel.el);
   app.append(frame);
@@ -129,8 +135,6 @@ async function boot(): Promise<void> {
   }
 
   // --- scene assets ----------------------------------------------------
-  const backgrounds = state.assets.filter((a) => a.kind === "background") as Asset<BackgroundMeta>[];
-  const sprites = state.assets.filter((a) => a.kind === "sprite" && a.active) as Asset<SpriteMeta>[];
   const bg = backgrounds.find((b) => b.id === settings.background) ?? backgrounds[0];
   if (bg) await scene.setBackground(bg);
   await scene.setSprites(sprites);

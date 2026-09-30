@@ -81,6 +81,30 @@ The APK is at `frontend/android/app/build/outputs/apk/debug/app-debug.apk`. With
 - The screen stays on while the timer runs.
 - If you lock the phone or switch apps mid-phase, a notification plays the same 8-bit chime at the deadline. Allow notifications when asked on first launch. If the phone is on silent, the chime stays silent.
 
+## Backgrounds
+
+Open Settings (`S`, or tap Settings on the phone) and tap a thumbnail to switch scenes. The choice is saved.
+
+| Scene | Mood | Effect |
+|---|---|---|
+| Mt Fuji | sunset | cherry petals |
+| Los Angeles: Hollywood sign, Griffith Observatory, palms | golden hour | jacaranda petals |
+| Bologna: Due Torri, terracotta roofs, porticoes | warm evening | autumn leaves |
+| Paris: Eiffel Tower, Haussmann rooftops, the Seine | dusk | autumn leaves |
+| Geneva: Jet d'Eau, Lac Léman, Mont Blanc | bright morning | fountain mist |
+| Uppsala: cathedral spires, castle, Fyris | winter twilight | snow |
+| Stockholm: Stadshuset, Gamla stan, Riddarholmen | pink twilight | snow |
+| Arlington: AT&T Stadium, Globe Life Field | Texas sunset | fireflies |
+| Mexico City: Ángel de la Independencia, Popocatépetl | hazy afternoon | jacaranda petals |
+
+**To add a scene:**
+1. Write a generator in `backend/pomodoro/imaging/cities.py` using the `paint.py` helpers.
+2. Add it to `CITIES`.
+3. Bump `BUILTIN_VERSION` in `assets.py`.
+4. Rebuild.
+
+Keep the landmark on a side third, because the clock covers the middle of the screen. Keep important detail below y≈40, because phones crop the top of the sky.
+
 ## Keys
 
 | Key | Action |
@@ -114,6 +138,7 @@ cd frontend && npm test        # timer state machine
 ## Layout
 
 - `backend/pomodoro/imaging/builtin.py`: procedural Mt Fuji scene (320×180)
+- `backend/pomodoro/imaging/cities.py`, `paint.py`: the eight city scenes and their shared pixel helpers
 - `backend/pomodoro/imaging/sprite_template.py`: role-coded walk-cycle template (hair/skin/shirt/pants/shoes)
 - `backend/pomodoro/imaging/sprite.py`: recolors the template into a sprite sheet
 - `frontend/src/flipclock.ts`: split-flap digits

@@ -35,7 +35,7 @@ class Wanderer {
   constructor(
     private img: HTMLImageElement,
     private meta: SpriteMeta,
-    private ground: BackgroundMeta,
+    public ground: BackgroundMeta,
   ) {
     this.x = this.snap(rand(24, SCENE_W - 24));
     this.y = this.pickY();
@@ -52,6 +52,14 @@ class Wanderer {
   private pickY(): number {
     const top = this.ground.groundTop + 6;
     return Math.round(rand(top, this.ground.groundBottom));
+  }
+
+  /** Move onto a new background's walkable band. */
+  setGround(ground: BackgroundMeta): void {
+    this.ground = ground;
+    if (this.y < ground.groundTop + 6 || this.y > ground.groundBottom) {
+      this.y = this.targetY = this.pickY();
+    }
   }
 
   update(dt: number): void {
@@ -109,13 +117,24 @@ class Wanderer {
   }
 }
 
-/** Cherry-blossom petals drifting down across the scene. */
-class Petal {
+interface Particle {
+  update(dt: number, t: number): void;
+  draw(ctx: CanvasRenderingContext2D): void;
+}
+
+const pick = <T,>(xs: T[]): T => xs[Math.floor(Math.random() * xs.length)];
+
+/** Blossoms drifting down and to the right: cherry (Fuji) or jacaranda (LA, CDMX). */
+class Petal implements Particle {
   x = rand(0, SCENE_W);
   y = rand(-SCENE_H, 0);
   private vy = rand(6, 14);
   private phase = rand(0, Math.PI * 2);
-  private color = Math.random() < 0.5 ? "#ffcde1" : "#ff96be";
+  private color: string;
+
+  constructor(colors: string[]) {
+    this.color = pick(colors);
+  }
 
   update(dt: number, t: number): void {
     this.y += this.vy * dt;
@@ -132,13 +151,147 @@ class Petal {
   }
 }
 
+/** Autumn leaves: slower, wider sway, tumbling between flat and edge-on (Paris, Bologna). */
+class Leaf implements Particle {
+  x = rand(0, SCENE_W);
+  y = rand(-SCENE_H, 0);
+  private vy = rand(5, 10);
+  private phase = rand(0, Math.PI * 2);
+  private color = pick(["#e0a040", "#c86a30", "#a04a2c", "#d8b050"]);
+  private flat = true;
+
+  update(dt: number, t: number): void {
+    this.y += this.vy * dt;
+    this.x += Math.sin(t * 1.1 + this.phase) * 14 * dt;
+    this.flat = Math.sin(t * 3 + this.phase) > 0;
+    if (this.y > SCENE_H) {
+      this.x = rand(0, SCENE_W);
+      this.y = rand(-20, 0);
+    }
+  }
+
+  draw(ctx: CanvasRenderingContext2D): void {
+    ctx.fillStyle = this.color;
+    ctx.fillRect(Math.round(this.x), Math.round(this.y), this.flat ? 2 : 1, this.flat ? 1 : 2);
+  }
+}
+
+/** Snowfall in two depths: small slow flakes behind, bigger faster ones in front (Uppsala, Stockholm). */
+class Snowflake implements Particle {
+  x = rand(0, SCENE_W);
+  y = rand(-SCENE_H, SCENE_H);
+  private near = Math.random() < 0.3;
+  private vy = this.near ? rand(14, 20) : rand(6, 11);
+  private phase = rand(0, Math.PI * 2);
+
+  update(dt: number, t: number): void {
+    this.y += this.vy * dt;
+    this.x += Math.sin(t * 0.8 + this.phase) * 5 * dt;
+    if (this.y > SCENE_H) {
+      this.x = rand(0, SCENE_W);
+      this.y = rand(-10, 0);
+    }
+  }
+
+  draw(ctx: CanvasRenderingContext2D): void {
+    ctx.fillStyle = this.near ? "#ffffff" : "#c8d4f0";
+    const size = this.near ? 2 : 1;
+    ctx.fillRect(Math.round(this.x), Math.round(this.y), size, size);
+  }
+}
+
+/** Spray blowing off the top of a fountain, twinkling as it drifts and falls (Geneva). */
+class Mist implements Particle {
+  private x = 0;
+  private y = 0;
+  private vx = 0;
+  private vy = 0;
+  private life = 0;
+
+  constructor(private origin: [number, number]) {
+    this.reset();
+    this.life = rand(0, 4);
+  }
+
+  private reset(): void {
+    this.x = this.origin[0] + rand(-2, 2);
+    this.y = this.origin[1] + rand(-4, 4);
+    this.vx = rand(4, 12);
+    this.vy = rand(-2, 3);
+    this.life = rand(3, 6);
+  }
+
+  update(dt: number): void {
+    this.life -= dt;
+    this.vy += 4 * dt; // gravity pulls the spray down toward the lake
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    if (this.life <= 0) this.reset();
+  }
+
+  draw(ctx: CanvasRenderingContext2D): void {
+    ctx.fillStyle = Math.random() < 0.25 ? "#ffffff" : "#c4def6";
+    ctx.fillRect(Math.round(this.x), Math.round(this.y), 1, 1);
+  }
+}
+
+/** Fireflies hovering over the grass, blinking on and off (Arlington). */
+class Firefly implements Particle {
+  private x = rand(0, SCENE_W);
+  private y = rand(118, 158);
+  private phase = rand(0, Math.PI * 2);
+  private speed = rand(0.6, 1.4);
+  private glow = 0;
+
+  update(dt: number, t: number): void {
+    this.x += Math.sin(t * this.speed + this.phase) * 6 * dt;
+    this.y += Math.cos(t * this.speed * 0.7 + this.phase) * 3 * dt;
+    this.glow = Math.max(0, Math.sin(t * 1.6 * this.speed + this.phase * 3));
+  }
+
+  draw(ctx: CanvasRenderingContext2D): void {
+    if (this.glow < 0.3) return;
+    const x = Math.round(this.x);
+    const y = Math.round(this.y);
+    if (this.glow > 0.8) {
+      ctx.fillStyle = "rgba(255, 240, 120, 0.35)";
+      ctx.fillRect(x - 1, y, 3, 1);
+      ctx.fillRect(x, y - 1, 1, 3);
+    }
+    ctx.fillStyle = "#fff38a";
+    ctx.fillRect(x, y, 1, 1);
+  }
+}
+
+/** Particles for a background's `effect` (older Fuji metadata only has `petals: true`). */
+export function makeParticles(meta: BackgroundMeta): Particle[] {
+  const effect = meta.effect ?? (meta.petals ? "petals" : undefined);
+  const n = (count: number, make: () => Particle) => Array.from({ length: count }, make);
+  switch (effect) {
+    case "petals":
+      return n(28, () => new Petal(["#ffcde1", "#ff96be"]));
+    case "jacaranda":
+      return n(28, () => new Petal(["#c49cec", "#9666cc"]));
+    case "leaves":
+      return n(18, () => new Leaf());
+    case "snow":
+      return n(70, () => new Snowflake());
+    case "mist":
+      return n(40, () => new Mist(meta.effectOrigin ?? [SCENE_W / 2, 24]));
+    case "fireflies":
+      return n(16, () => new Firefly());
+    default:
+      return [];
+  }
+}
+
 export class Scene {
   readonly canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private bg: HTMLImageElement | null = null;
   private bgMeta: BackgroundMeta = { groundTop: 150, groundBottom: 176 };
   private sprites: Wanderer[] = [];
-  private petals: Petal[] = [];
+  private particles: Particle[] = [];
   private t = 0;
 
   constructor() {
@@ -153,7 +306,8 @@ export class Scene {
   async setBackground(asset: Asset<BackgroundMeta>): Promise<void> {
     this.bg = await loadImage(asset.src);
     this.bgMeta = asset.meta;
-    this.petals = asset.meta.petals ? Array.from({ length: 28 }, () => new Petal()) : [];
+    this.particles = makeParticles(asset.meta);
+    for (const s of this.sprites) s.setGround(asset.meta);
   }
 
   async setSprites(assets: Asset<SpriteMeta>[]): Promise<void> {
@@ -164,7 +318,7 @@ export class Scene {
   update(dt: number): void {
     this.t += dt;
     for (const s of this.sprites) s.update(dt);
-    for (const p of this.petals) p.update(dt, this.t);
+    for (const p of this.particles) p.update(dt, this.t);
   }
 
   draw(): void {
@@ -176,6 +330,6 @@ export class Scene {
     }
     // Depth-sort so sprites lower on screen draw in front.
     for (const s of [...this.sprites].sort((a, b) => a.y - b.y)) s.draw(ctx);
-    for (const p of this.petals) p.draw(ctx);
+    for (const p of this.particles) p.draw(ctx);
   }
 }

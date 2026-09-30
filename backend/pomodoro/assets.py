@@ -10,17 +10,19 @@ from pathlib import Path
 from PIL import Image
 
 from .imaging.builtin import FUJI_META, mt_fuji
+from .imaging.cities import CITIES
 from .imaging.sprite import LATINO_DEMO, render_sheet
 from .storage import Storage
 
 # Bump when a generator changes so installed copies are regenerated.
-BUILTIN_VERSION = 2
+BUILTIN_VERSION = 3
 
 
 def builtin_assets() -> list[tuple[str, str, str, Image.Image, dict]]:
     sheet, sprite_meta = render_sheet(LATINO_DEMO)
     return [
         ("builtin:fuji", "background", "Mt Fuji at sunset", mt_fuji(), FUJI_META),
+        *((asset_id, "background", name, *make()) for asset_id, name, make in CITIES),
         ("builtin:mateo", "sprite", "Mateo", sheet, sprite_meta),
     ]
 

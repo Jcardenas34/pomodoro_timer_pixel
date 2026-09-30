@@ -44,7 +44,7 @@ C = {
 }
 
 # Metadata the frontend needs to place sprites.
-FUJI_META = {"groundTop": 158, "groundBottom": 176, "petals": True}
+FUJI_META = {"groundTop": 158, "groundBottom": 176, "petals": True, "effect": "petals"}
 
 LAKE_TOP = 134
 GRASS_TOP = 152
