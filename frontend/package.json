@@ -10,10 +10,12 @@
     "test": "vitest run",
     "assets:export": "cd ../backend && python -m pomodoro --export-demo ../frontend/public/demo && python -m pomodoro --export-android ../frontend/android/app/src/main/res",
     "android:build": "npm run assets:export && npm run build && cap sync android && cd android && ./gradlew assembleDebug",
-    "android:install": "bash ../scripts/install-apk.sh"
+    "android:install": "bash ../scripts/install-apk.sh",
+    "screenshots": "node scripts/capture-screenshots.mjs && python ../scripts/make-hero-gif.py"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.2",
+    "playwright": "1.62.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.1",
     "vitest": "^5.0.2"
