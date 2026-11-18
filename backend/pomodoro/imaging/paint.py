@@ -230,3 +230,172 @@ class Canvas:
                     else:
                         c = leaf
                     self.put(x, y, c)
+
+    # --- detail helpers -------------------------------------------------------
+    def brick(self, x0: int, y0: int, x1: int, y1: int, mortar: RGB, course: int = 3) -> None:
+        """Staggered brick coursing: dotted mortar lines plus offset vertical joints."""
+        for y in range(y0, y1):
+            row = (y - y0) // course
+            if (y - y0) % course == course - 1:
+                for x in range(x0, x1, 2):
+                    self.put(x, y, mortar)
+            else:
+                for x in range(x0 + (2 if row % 2 else 0), x1, 5):
+                    if (y - y0) % course == 0:
+                        self.put(x, y, mortar)
+
+    def shade_side(self, x0: int, y0: int, x1: int, y1: int, c: RGB, dither: bool = True) -> None:
+        """Paint a shadowed face; dither=True leaves a 50% blend for a softer edge column."""
+        self.rect(x0 + 1, y0, x1, y1, c)
+        if dither:
+            for y in range(y0, y1):
+                if y % 2 == 0:
+                    self.put(x0, y, c)
+
+    def window(self, x: int, y: int, w: int, h: int, glass: RGB, frame: RGB | None = None,
+               sill: RGB | None = None, arched: bool = False, mullion: RGB | None = None) -> None:
+        """A framed window: glass, optional frame/arch, sill under it, and a center mullion."""
+        if frame:
+            self.rect(x - 1, y - 1, x + w + 1, y + h + 1, frame)
+        self.rect(x, y, x + w, y + h, glass)
+        if arched and w >= 2:
+            self.put(x, y, frame or glass)
+            self.put(x + w - 1, y, frame or glass)
+        if mullion and w >= 3:
+            self.rect(x + w // 2, y, x + w // 2 + 1, y + h, mullion)
+            if h >= 4:
+                self.rect(x, y + h // 2, x + w, y + h // 2 + 1, mullion)
+        if sill:
+            self.rect(x - 1, y + h, x + w + 1, y + h + 1, sill)
+
+    def window_grid(self, x0: int, y0: int, x1: int, y1: int, w: int, h: int, dx: int, dy: int,
+                    lit: RGB, dark: RGB, lit_ratio: float, frame: RGB | None = None,
+                    sill: RGB | None = None, arched: bool = False) -> None:
+        for y in range(y0, y1 - h + 1, dy):
+            for x in range(x0, x1 - w + 1, dx):
+                glass = lit if self.rng.random() < lit_ratio else dark
+                self.window(x, y, w, h, glass, frame, sill, arched)
+
+    def halo(self, cx: float, cy: float, r: float, c: RGB, density: int = 2) -> None:
+        """Dithered glow over whatever is already painted (lamps, lit windows)."""
+        for y in range(int(cy - r), int(cy + r) + 1):
+            for x in range(int(cx - r), int(cx + r) + 1):
+                d = math.hypot(x - cx, y - cy)
+                if d > r:
+                    continue
+                # 50% checker in the core, 25% grid toward the rim: reads as a soft glow.
+                core = d <= r * 0.55 and (x + y) % 2 == 0
+                rim = x % 2 == 0 and y % 2 == 0 and (x // 2 + y // 2) % max(1, density - 1) == 0
+                if core or rim:
+                    self.put(x, y, c)
+
+    def lamp(self, x: int, base: int, h: int, post: RGB, glow: RGB, halo: RGB | None = None,
+             double: bool = False) -> None:
+        """Victorian street lamp: footing, post, cross-arm (double) and a glowing lantern."""
+        self.rect(x - 1, base - 2, x + 2, base, post)
+        self.rect(x, base - h, x + 1, base, post)
+        heads = [x - 3, x + 3] if double else [x]
+        if double:
+            self.rect(x - 3, base - h + 1, x + 4, base - h + 2, post)
+        for hx in heads:
+            if halo:
+                self.halo(hx + 0.5, base - h - 1, 5, halo)
+            self.rect(hx - 1, base - h - 3, hx + 2, base - h, glow)
+            self.put(hx, base - h - 4, post)
+            self.rect(hx - 1, base - h - 3, hx + 2, base - h - 2, post)
+
+    def railing(self, x0: int, x1: int, top: int, bottom: int, c: RGB, gap: int = 3) -> None:
+        self.rect(x0, top, x1, top + 1, c)
+        for x in range(x0, x1, gap):
+            self.rect(x, top, x + 1, bottom, c)
+
+    def bench(self, x: int, y: int, wood: RGB, iron: RGB) -> None:
+        """Park bench seen from the front, seat at row y."""
+        self.rect(x, y - 3, x + 9, y - 2, wood)
+        self.rect(x, y, x + 9, y + 1, wood)
+        for lx in (x, x + 8):
+            self.rect(lx, y - 3, lx + 1, y + 3, iron)
+
+    def person(self, x: int, base: int, coat: RGB, skin: RGB, legs: RGB, hat: RGB | None = None,
+               umbrella: RGB | None = None) -> None:
+        """A 3x8 pedestrian silhouette for crowds in the middle distance."""
+        self.rect(x, base - 2, x + 1, base, legs)
+        self.rect(x + 2, base - 2, x + 3, base, legs)
+        self.rect(x, base - 6, x + 3, base - 2, coat)
+        self.put(x + 1, base - 7, skin)
+        if hat:
+            self.put(x + 1, base - 8, hat)
+        if umbrella:
+            self.rect(x - 2, base - 10, x + 5, base - 9, umbrella)
+            self.rect(x - 1, base - 11, x + 4, base - 10, umbrella)
+            self.put(x + 1, base - 9, (40, 40, 40))
+            self.put(x + 1, base - 8, (40, 40, 40))
+
+    def birds(self, n: int, x0: int, x1: int, y0: int, y1: int, c: RGB) -> None:
+        for _ in range(n):
+            x, y = self.rng.randrange(x0, x1), self.rng.randrange(y0, y1)
+            self.put(x - 1, y - 1, c)
+            self.put(x, y, c)
+            self.put(x + 1, y - 1, c)
+
+    def haze(self, y0: int, y1: int, c: RGB, every: int = 4) -> None:
+        """Sparse ordered-dither veil for atmospheric depth over distant layers."""
+        for y in range(max(0, y0), min(H, y1)):
+            for x in range((y * 2) % every, W, every):
+                self.px[x, y] = c
+
+    def bush(self, cx: int, base: int, r: int, leaf: RGB, hi: RGB, dark: RGB) -> None:
+        for y in range(base - r * 2, base):
+            for x in range(cx - r - 2, cx + r + 3):
+                dy = (y - (base - r)) / r
+                dx = (x - cx) / (r + 2)
+                if dx * dx + dy * dy <= 1 - self.rng.random() * 0.25:
+                    c = dark if y > base - r * 0.7 else hi if (self.rng.random() < 0.2 or (y < base - r * 1.4 and (x + y) % 3 == 0)) else leaf
+                    self.put(x, y, c)
+
+    def flowers(self, x0: int, x1: int, y0: int, y1: int, colors: Sequence[RGB], n: int) -> None:
+        for _ in range(n):
+            self.put(self.rng.randrange(x0, x1), self.rng.randrange(y0, y1), self.rng.choice(colors))
+
+    def boat(self, x: int, y: int, w: int, hull: RGB, cabin: RGB, trim: RGB, windows: RGB | None = None) -> None:
+        """Small motor launch: tapered hull with a waterline, a cabin, and port windows."""
+        self.poly([(x, y - 3), (x + w, y - 3), (x + w - 3, y), (x + 2, y)], hull)
+        self.rect(x + 1, y - 3, x + w, y - 2, trim)
+        self.rect(x + w // 4, y - 7, x + w * 3 // 4, y - 3, cabin)
+        if windows:
+            for wx in range(x + w // 4 + 1, x + w * 3 // 4 - 1, 3):
+                self.rect(wx, y - 6, wx + 2, y - 5, windows)
+
+    def flag(self, x: int, base: int, pole_h: int, w: int, h: int, colorer: Callable[[int, int], RGB],
+             pole: RGB, finial: RGB, wave: float = 1.0, dark: Callable[[RGB], RGB] | None = None) -> None:
+        """Flag on a pole, rippling: each column sags by a sine offset and troughs are shaded."""
+        self.rect(x, base - pole_h, x + 1, base, pole)
+        self.put(x, base - pole_h - 1, finial)
+        top = base - pole_h + 1
+        for fx in range(w):
+            phase = math.sin(fx / 2.6)
+            off = round(phase * wave) if fx > 1 else 0
+            for fy in range(h):
+                c = colorer(fx, fy)
+                if dark and phase < -0.55:
+                    c = dark(c)
+                self.put(x + 1 + fx, top + fy + off, c)
+
+
+def darken(c: RGB, f: float = 0.78) -> RGB:
+    return tuple(max(0, min(255, round(v * f))) for v in c)  # type: ignore[return-value]
+
+
+def swiss_flag(size: int) -> Callable[[int, int], RGB]:
+    """Square Swiss flag: red field, white cross with arms 1/6 thick, set in from the edge."""
+    red, white = (218, 41, 28), (255, 255, 255)
+    arm = max(1, round(size / 5))
+    inset = max(1, round(size / 6))
+    lo = (size - arm) // 2
+
+    def colorer(fx: int, fy: int) -> RGB:
+        horiz = lo <= fy < lo + arm and inset <= fx < size - inset
+        vert = lo <= fx < lo + arm and inset <= fy < size - inset
+        return white if horiz or vert else red
+
+    return colorer

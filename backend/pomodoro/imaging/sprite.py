@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from PIL import Image
 
-from .sprite_template import FRAME_H, FRAME_W, build_frames, sheet_meta
+from .sprite_template import DEFAULT_HAIRSTYLE, FRAME_H, FRAME_W, build_frames, sheet_meta
 
 RGB = tuple[int, int, int]
 
-# Preset for the demo character: warm brown skin, short black wavy hair,
-# teal shirt, dark jeans, white sneakers.
+# Juan: warm brown skin, black hair and mustache, teal shirt, dark jeans,
+# white sneakers. He comes in three hairstyles (sprite_template.HAIRSTYLES).
 LATINO_DEMO: dict[str, RGB] = {
     "O": (24, 20, 32),
     "H": (44, 38, 44),
@@ -20,6 +20,7 @@ LATINO_DEMO: dict[str, RGB] = {
     "E": (24, 20, 32),
     "W": (255, 255, 255),
     "M": (132, 64, 52),
+    "U": (36, 30, 36),
     "T": (40, 160, 152),
     "t": (24, 112, 112),
     "L": (80, 52, 36),
@@ -35,7 +36,8 @@ def shade(color: RGB, factor: float = 0.78) -> RGB:
     return tuple(max(0, min(255, round(c * factor))) for c in color)  # type: ignore[return-value]
 
 
-def palette_from_colors(hair: RGB, skin: RGB, shirt: RGB, pants: RGB, shoes: RGB) -> dict[str, RGB]:
+def palette_from_colors(hair: RGB, skin: RGB, shirt: RGB, pants: RGB, shoes: RGB,
+                        mustache: bool = False) -> dict[str, RGB]:
     """Build a full role palette from the five base colors a photo gives us."""
     return {
         "O": (26, 16, 32),
@@ -47,6 +49,7 @@ def palette_from_colors(hair: RGB, skin: RGB, shirt: RGB, pants: RGB, shoes: RGB
         "E": (26, 16, 32),
         "W": (255, 255, 255),
         "M": shade(skin, 0.6),
+        "U": shade(hair, 0.85) if mustache else skin,
         "T": shirt,
         "t": shade(shirt),
         "L": shade(pants, 0.6),
@@ -57,9 +60,9 @@ def palette_from_colors(hair: RGB, skin: RGB, shirt: RGB, pants: RGB, shoes: RGB
     }
 
 
-def render_sheet(palette: dict[str, RGB]) -> tuple[Image.Image, dict]:
+def render_sheet(palette: dict[str, RGB], hairstyle: str = DEFAULT_HAIRSTYLE) -> tuple[Image.Image, dict]:
     """Return (RGBA sheet with frames laid out horizontally, frontend metadata)."""
-    frames = build_frames()
+    frames = build_frames(hairstyle)
     sheet = Image.new("RGBA", (FRAME_W * len(frames), FRAME_H), (0, 0, 0, 0))
     px = sheet.load()
     for i, rows in enumerate(frames):

@@ -6,7 +6,7 @@ const ground = { groundTop: 158, groundBottom: 176 };
 
 describe("makeParticles", () => {
   it("builds particles for every city effect", () => {
-    const effects: BackgroundEffect[] = ["petals", "jacaranda", "leaves", "snow", "mist", "fireflies"];
+    const effects: BackgroundEffect[] = ["petals", "jacaranda", "leaves", "snow", "mist", "fireflies", "rain"];
     for (const effect of effects) {
       const ps = makeParticles({ ...ground, effect, effectOrigin: [212, 24] });
       expect(ps.length, effect).toBeGreaterThan(0);

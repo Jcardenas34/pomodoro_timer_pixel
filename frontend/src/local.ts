@@ -21,6 +21,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autoStartWork: false,
   sound: true,
   background: "builtin:fuji",
+  sprite: "builtin:juan-sidepart",
+  mustache: true,
 };
 
 export interface SessionRecord {

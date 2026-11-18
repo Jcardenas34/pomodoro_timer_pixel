@@ -6,3 +6,7 @@ frontend/dist/
 frontend/public/demo/
 build/
 dist/
+.claude/
+release/
+*.apk
+docs/DECISIONS.md

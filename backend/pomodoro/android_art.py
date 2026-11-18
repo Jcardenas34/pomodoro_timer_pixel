@@ -57,6 +57,13 @@ def legacy_icon(px: int) -> Image.Image:
     return bg.crop((inset, inset, inset + px, inset + px))
 
 
+def export_windows_icon(path: Path) -> None:
+    """Multi-size .ico for the Windows exe, using the same art as the Android launcher icon."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    sizes = [16, 24, 32, 48, 64, 128, 256]
+    legacy_icon(256).save(path, format="ICO", sizes=[(s, s) for s in sizes])
+
+
 def export_android_art(res_dir: Path) -> None:
     for density, (legacy_px, layer_px) in DENSITIES.items():
         out = res_dir / f"mipmap-{density}"

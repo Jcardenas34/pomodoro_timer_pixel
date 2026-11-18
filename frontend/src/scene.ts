@@ -62,6 +62,17 @@ class Wanderer {
     }
   }
 
+  /** Continue from another walker's position, heading and pause (used when swapping sprites). */
+  takePlaceOf(other: Wanderer): void {
+    this.x = other.x;
+    this.y = other.y;
+    this.targetX = other.targetX;
+    this.targetY = other.targetY;
+    this.idleFor = other.idleFor;
+    this.stepT = other.stepT;
+    this.facing = other.facing;
+  }
+
   update(dt: number): void {
     if (this.idleFor > 0) {
       this.idleFor -= dt;
@@ -263,6 +274,50 @@ class Firefly implements Particle {
   }
 }
 
+/** Slanted drizzle with a brief splash where each drop lands on the pavement (London). */
+class Raindrop implements Particle {
+  x = rand(-20, SCENE_W);
+  y = rand(-SCENE_H, SCENE_H);
+  private near = Math.random() < 0.35;
+  private vy = this.near ? rand(150, 190) : rand(100, 130);
+  private landY = rand(158, 178);
+  private splash = 0;
+
+  update(dt: number): void {
+    if (this.splash > 0) {
+      this.splash -= dt;
+      if (this.splash <= 0) this.reset();
+      return;
+    }
+    this.y += this.vy * dt;
+    this.x += this.vy * 0.25 * dt; // wind from the left
+    if (this.y >= this.landY) {
+      this.y = this.landY;
+      this.splash = 0.12;
+    }
+  }
+
+  private reset(): void {
+    this.x = rand(-40, SCENE_W);
+    this.y = rand(-20, 0);
+    this.landY = rand(158, 178);
+  }
+
+  draw(ctx: CanvasRenderingContext2D): void {
+    const x = Math.round(this.x);
+    const y = Math.round(this.y);
+    if (this.splash > 0) {
+      ctx.fillStyle = "rgba(200, 214, 240, 0.7)";
+      ctx.fillRect(x - 1, y - 1, 1, 1);
+      ctx.fillRect(x + 1, y - 1, 1, 1);
+      return;
+    }
+    ctx.fillStyle = this.near ? "rgba(200, 214, 240, 0.75)" : "rgba(160, 176, 214, 0.5)";
+    const len = this.near ? 4 : 3;
+    for (let i = 0; i < len; i++) ctx.fillRect(x - Math.floor(i / 4), y - i, 1, 1);
+  }
+}
+
 /** Particles for a background's `effect` (older Fuji metadata only has `petals: true`). */
 export function makeParticles(meta: BackgroundMeta): Particle[] {
   const effect = meta.effect ?? (meta.petals ? "petals" : undefined);
@@ -280,6 +335,8 @@ export function makeParticles(meta: BackgroundMeta): Particle[] {
       return n(40, () => new Mist(meta.effectOrigin ?? [SCENE_W / 2, 24]));
     case "fireflies":
       return n(16, () => new Firefly());
+    case "rain":
+      return n(90, () => new Raindrop());
     default:
       return [];
   }
@@ -310,9 +367,15 @@ export class Scene {
     for (const s of this.sprites) s.setGround(asset.meta);
   }
 
+  /** Replace the walking sprites. Walkers already on screen keep their spot and heading. */
   async setSprites(assets: Asset<SpriteMeta>[]): Promise<void> {
     const imgs = await Promise.all(assets.map((a) => loadImage(a.src)));
-    this.sprites = assets.map((a, i) => new Wanderer(imgs[i], a.meta, this.bgMeta));
+    const previous = this.sprites;
+    this.sprites = assets.map((a, i) => {
+      const w = new Wanderer(imgs[i], a.meta, this.bgMeta);
+      if (previous[i]) w.takePlaceOf(previous[i]);
+      return w;
+    });
   }
 
   update(dt: number): void {

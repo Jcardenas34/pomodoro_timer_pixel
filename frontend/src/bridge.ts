@@ -17,9 +17,13 @@ export interface Settings {
   autoStartWork: boolean;
   sound: boolean;
   background: string;
+  /** Id of the sprite asset walking around the scene. */
+  sprite: string;
+  /** Show the sprite's mustache; off swaps in its clean-shaven sheet. */
+  mustache: boolean;
 }
 
-export type BackgroundEffect = "petals" | "jacaranda" | "leaves" | "snow" | "mist" | "fireflies";
+export type BackgroundEffect = "petals" | "jacaranda" | "leaves" | "snow" | "mist" | "fireflies" | "rain";
 
 export interface BackgroundMeta {
   groundTop: number;
@@ -40,6 +44,10 @@ export interface SpriteMeta {
   fps: number;
   walk: Record<Direction, number[]>;
   idle: Record<Direction, number>;
+  hairstyle?: string;
+  mustache?: boolean;
+  /** Set on a variant sheet (e.g. clean-shaven): the id of the sprite it varies. */
+  base?: string;
 }
 
 export interface Asset<M = BackgroundMeta | SpriteMeta> {

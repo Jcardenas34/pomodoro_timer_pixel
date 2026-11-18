@@ -9,11 +9,12 @@ from pathlib import Path
 
 from .api import Api
 from .assets import ensure_builtin, export_demo
-from .android_art import export_android_art
+from .android_art import export_android_art, export_windows_icon
 from .audio import export_chimes
 from .storage import Storage
 
-ROOT = Path(__file__).resolve().parents[2]
+# A PyInstaller build unpacks frontend/dist under sys._MEIPASS (see PixelPomodoro.spec).
+ROOT = Path(sys._MEIPASS) if getattr(sys, "frozen", False) else Path(__file__).resolve().parents[2]
 DIST = ROOT / "frontend" / "dist" / "index.html"
 DEV_URL = "http://localhost:5173"
 
@@ -36,7 +37,14 @@ def main() -> None:
                         help="pywebview GUI backend (default: qt on Linux, native elsewhere)")
     parser.add_argument("--export-android", type=Path, metavar="RES_DIR",
                         help="write chimes, launcher icons and splash into an Android res/ dir, then exit")
+    parser.add_argument("--export-icon", type=Path, metavar="ICO",
+                        help="write the Windows .exe icon to ICO, then exit")
     args = parser.parse_args()
+
+    if args.export_icon:
+        export_windows_icon(args.export_icon)
+        print(f"wrote Windows icon to {args.export_icon}")
+        return
 
     if args.export_android:
         export_chimes(args.export_android / "raw")
@@ -53,8 +61,10 @@ def main() -> None:
         # Read by pywebview when it picks a backend, including for webview.screens.
         os.environ.setdefault("PYWEBVIEW_GUI", args.gui)
     if running_in_wsl():
-        # Chromium's GPU path renders a blank window under WSLg; software rendering is plenty here.
-        os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-gpu")
+        # Chromium's GPU path spews GL errors under WSLg. SwiftShader (Chromium's own software
+        # GL) renders correctly and keeps GPU-style compositing: ~46 fps at 1080p versus ~23
+        # with --disable-gpu, whose software compositor is slow at upscaling the scene canvas.
+        os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--use-gl=swiftshader")
 
     import webview  # imported late so --export-demo works without a GUI toolkit
 

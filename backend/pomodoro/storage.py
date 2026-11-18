@@ -20,6 +20,8 @@ DEFAULT_SETTINGS = {
     "autoStartWork": False,
     "sound": True,
     "background": "builtin:fuji",
+    "sprite": "builtin:juan-sidepart",
+    "mustache": True,
 }
 
 SCHEMA = """
@@ -110,6 +112,13 @@ class Storage:
         )
         self.db.commit()
         return path
+
+    def delete_asset(self, asset_id: str) -> None:
+        row = self.db.execute("SELECT path FROM assets WHERE id = ?", (asset_id,)).fetchone()
+        if row:
+            Path(row[0]).unlink(missing_ok=True)
+            self.db.execute("DELETE FROM assets WHERE id = ?", (asset_id,))
+            self.db.commit()
 
     def list_assets(self, kind: str | None = None) -> list[dict]:
         sql = "SELECT id, kind, name, path, meta_json, active FROM assets"

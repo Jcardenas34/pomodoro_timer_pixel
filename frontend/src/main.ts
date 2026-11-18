@@ -64,16 +64,37 @@ async function boot(): Promise<void> {
     renderLabel();
   });
   const backgrounds = state.assets.filter((a) => a.kind === "background") as Asset<BackgroundMeta>[];
-  const sprites = state.assets.filter((a) => a.kind === "sprite" && a.active) as Asset<SpriteMeta>[];
-  const settingsPanel = new SettingsPanel((values) => {
-    settings = { ...settings, ...values };
-    applySettings();
-    if (values.background) {
-      const picked = backgrounds.find((b) => b.id === values.background);
-      if (picked) void scene.setBackground(picked);
-    }
-    void api.save_settings(values);
-  }, backgrounds);
+  const allSprites = state.assets.filter((a) => a.kind === "sprite" && a.active) as Asset<SpriteMeta>[];
+  const sprites = allSprites.filter((s) => !s.meta.base); // variants are reached through their base
+  const shavenOf = (id: string) => allSprites.find((s) => s.meta.base === id && s.meta.mustache === false);
+  const chosenSprite = (id: string) => {
+    const base = sprites.find((s) => s.id === id) ?? sprites[0];
+    return base && !settings.mustache ? (shavenOf(base.id) ?? base) : base;
+  };
+  const settingsPanel = new SettingsPanel(
+    (values) => {
+      settings = { ...settings, ...values };
+      applySettings();
+      if (values.background) {
+        const picked = backgrounds.find((b) => b.id === values.background);
+        if (picked) void scene.setBackground(picked);
+      }
+      if (values.sprite !== undefined || values.mustache !== undefined) {
+        const picked = chosenSprite(settings.sprite);
+        if (picked) void scene.setSprites([picked]);
+      }
+      void api.save_settings(values);
+    },
+    backgrounds,
+    sprites.map((s) => ({
+      id: s.id,
+      name: s.name,
+      src: s.src,
+      shavenSrc: shavenOf(s.id)?.src,
+      frameWidth: s.meta.frameWidth,
+      frameHeight: s.meta.frameHeight,
+    })),
+  );
 
   frame.append(scene.canvas, center, controls, taskPanel.el, settingsPanel.el);
   app.append(frame);
@@ -137,7 +158,8 @@ async function boot(): Promise<void> {
   // --- scene assets ----------------------------------------------------
   const bg = backgrounds.find((b) => b.id === settings.background) ?? backgrounds[0];
   if (bg) await scene.setBackground(bg);
-  await scene.setSprites(sprites);
+  const sprite = chosenSprite(settings.sprite);
+  await scene.setSprites(sprite ? [sprite] : []);
 
   applySettings();
 
@@ -175,14 +197,23 @@ async function boot(): Promise<void> {
   });
 
   // --- main loop -------------------------------------------------------
+  // The scene advances by real elapsed time in fixed sub-steps, so a slow renderer
+  // makes motion choppier but never slower. Only gaps over MAX_FRAME_S (a hidden or
+  // sleeping window) are clamped, so sprites don't teleport on wake.
+  const SIM_STEP_S = 1 / 30;
+  const MAX_FRAME_S = 0.5;
   let last = performance.now();
   function frameLoop(now: number): void {
-    const dt = Math.min(0.1, (now - last) / 1000);
+    let dt = Math.min(MAX_FRAME_S, Math.max(0, (now - last) / 1000));
     last = now;
     timer.tick();
     clock.show(timer.remainingMs());
     renderLabel();
-    scene.update(dt);
+    while (dt > 0) {
+      const step = Math.min(SIM_STEP_S, dt);
+      scene.update(step);
+      dt -= step;
+    }
     scene.draw();
     android?.sync();
     requestAnimationFrame(frameLoop);

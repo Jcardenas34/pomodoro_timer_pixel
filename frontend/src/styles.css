@@ -68,13 +68,17 @@ body {
   display: flex;
   align-items: center;
   gap: calc(var(--card-w) * 0.08);
-  filter: drop-shadow(0 calc(var(--card-w) * 0.05) calc(var(--card-w) * 0.06) rgba(0, 0, 0, 0.55));
 }
 
+/* A box-shadow per card, not filter: drop-shadow() on the whole clock. The filter
+   is re-rasterized every frame because the animated scene sits behind it, which
+   cost ~2/3 of the frame budget under software rendering (WSLg: 8 fps -> 24 fps). */
 .card {
   position: relative;
   width: var(--card-w);
   height: var(--card-h);
+  border-radius: var(--card-r);
+  box-shadow: 0 calc(var(--card-w) * 0.05) calc(var(--card-w) * 0.06) rgba(0, 0, 0, 0.55);
   perspective: calc(var(--card-w) * 5);
   font-family: var(--digit-font);
   font-weight: 700;
@@ -393,6 +397,29 @@ body {
 .bg-thumb img {
   width: 90px;
   height: 50.625px;
+  image-rendering: pixelated;
+}
+
+.sprite-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.sprite-options {
+  margin-bottom: 22px;
+}
+
+/* First sheet frame at 2x, cropped to the character (frames are mostly empty margin). */
+.sprite-thumb {
+  --scale: 3;
+  width: calc(18px * var(--scale));
+  height: calc(29px * var(--scale));
+  background-color: #5f9e5a;
+  background-repeat: no-repeat;
+  background-size: auto calc(var(--fh) * var(--scale) * 1px);
+  background-position: calc(-7px * var(--scale)) calc(-2px * var(--scale));
   image-rendering: pixelated;
 }
 

@@ -19,7 +19,7 @@ python -m pomodoro --windowed             # drag to monitor 2, then press F
 
 Full screen from WSLg may open on your primary monitor. Starting with `--windowed`, dragging the window to the second monitor and pressing `F` is the reliable way.
 
-Under WSL the app turns off Chromium GPU rendering (`--disable-gpu`) because it breaks under WSLg. Software rendering is fast enough here. Data lives in `~/.local/share/PixelPomodoro`.
+Under WSL the app renders with SwiftShader (`--use-gl=swiftshader`), Chromium's built-in software GL, because the GPU path breaks under WSLg. It reaches about 46 fps at 1080p. Override this with `QTWEBENGINE_CHROMIUM_FLAGS` if needed. Data lives in `~/.local/share/PixelPomodoro`.
 
 After changing `environment.yml`, update the env with `conda env update -f environment.yml --prune`.
 
@@ -41,6 +41,26 @@ Options:
 - `--dev` loads the Vite dev server (`npm run dev`) with devtools.
 
 Data (settings, session history, generated art) lives in `%APPDATA%\PixelPomodoro`.
+
+## Build a clickable Windows app (.exe)
+
+This bundles Python, the backend and the built frontend into one `dist\PixelPomodoro.exe`, so you can start the app without opening a terminal. Run it in **Windows PowerShell**, not WSL, because PyInstaller can't cross-compile.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\build-exe.ps1
+```
+
+The script:
+1. Builds the frontend.
+2. Installs the backend and PyInstaller.
+3. Writes the Fuji icon to `build\PixelPomodoro.ico`.
+4. Runs `PixelPomodoro.spec`.
+
+To use the exe:
+- Double-click it, or right-click it to pin it to Start or the taskbar.
+- To open full screen on your second monitor, make a shortcut and add `--screen 1` to the end of its *Target* field.
+- The exe keeps its data in `%APPDATA%\PixelPomodoro` like any other run, so your settings and history carry over.
+- Rebuild after you change the code.
 
 ## Run it on Android (sideloaded APK)
 
@@ -88,14 +108,25 @@ Open Settings (`S`, or tap Settings on the phone) and tap a thumbnail to switch 
 | Scene | Mood | Effect |
 |---|---|---|
 | Mt Fuji | sunset | cherry petals |
-| Los Angeles: Hollywood sign, Griffith Observatory, palms | golden hour | jacaranda petals |
-| Bologna: Due Torri, terracotta roofs, porticoes | warm evening | autumn leaves |
-| Paris: Eiffel Tower, Haussmann rooftops, the Seine | dusk | autumn leaves |
-| Geneva: Jet d'Eau, Lac Léman, Mont Blanc | bright morning | fountain mist |
-| Uppsala: cathedral spires, castle, Fyris | winter twilight | snow |
-| Stockholm: Stadshuset, Gamla stan, Riddarholmen | pink twilight | snow |
-| Arlington: AT&T Stadium, Globe Life Field | Texas sunset | fireflies |
-| Mexico City: Ángel de la Independencia, Popocatépetl | hazy afternoon | jacaranda petals |
+| London: Elizabeth Tower (Big Ben), Parliament, Westminster Bridge, the Eye, the Shard, a Routemaster bus, a black cab, phone boxes | rainy blue hour | rain with splashes |
+| Los Angeles: Hollywood sign, Griffith Observatory, palms, the 101, Walk of Fame stars | golden hour | jacaranda petals |
+| Bologna: Due Torri, San Luca on its hill, green shutters, porticoes, café parasols, a Vespa | warm evening | autumn leaves |
+| Paris: lattice Eiffel Tower, Sacré-Cœur, Haussmann balconies, the Seine, a bateau-mouche, bouquinistes, a café, a Morris column | dusk | autumn leaves |
+| Geneva: Jet d'Eau, Mont Blanc, Vieille Ville and St-Pierre, Swiss flags on a quay flagpole and on the paddle steamer, the Horloge fleurie | bright morning | fountain mist |
+| Uppsala: cathedral spires with clocks, castle, falu-red houses with Advent stars, a bike rack | winter twilight | snow |
+| Stockholm: Stadshuset, Gamla stan stepped gables, Riddarholmen, an archipelago steamer, drift ice | pink twilight | snow |
+| Arlington: AT&T Stadium arches, Globe Life Field, game-day parking, the Texas flag | Texas sunset | fireflies |
+| Mexico City: Ángel de la Independencia, Popocatépetl, Bellas Artes, papel picado, Metrobús, pink taxis | hazy afternoon | jacaranda petals |
+
+The walking sprite is **Juan**. Pick his look under Settings → Sprite:
+- **Original**: the first Juan, with wavy tufts and no mustache
+- **Crew cut** (short)
+- **Side part** (short-medium, the default)
+- **Wavy** (medium)
+
+The **Mustache** checkbox under the picker turns the mustache on or off for the three hairstyles; the thumbnails follow it. Both choices are saved, and switching swaps him in place on the path.
+
+**To add a hairstyle:** add 16×16 head grids for `down`, `up` and `right` to `HAIRSTYLES` in `sprite_template.py`, give it a name in `HAIRSTYLE_NAMES`, and bump `BUILTIN_VERSION`. Role `U` is facial hair; a palette can map it to the skin color for a clean-shaven sprite.
 
 **To add a scene:**
 1. Write a generator in `backend/pomodoro/imaging/cities.py` using the `paint.py` helpers.
@@ -138,7 +169,7 @@ cd frontend && npm test        # timer state machine
 ## Layout
 
 - `backend/pomodoro/imaging/builtin.py`: procedural Mt Fuji scene (320×180)
-- `backend/pomodoro/imaging/cities.py`, `paint.py`: the eight city scenes and their shared pixel helpers
+- `backend/pomodoro/imaging/cities.py`, `paint.py`: the nine city scenes and their shared pixel helpers
 - `backend/pomodoro/imaging/sprite_template.py`: role-coded walk-cycle template (hair/skin/shirt/pants/shoes)
 - `backend/pomodoro/imaging/sprite.py`: recolors the template into a sprite sheet
 - `frontend/src/flipclock.ts`: split-flap digits
